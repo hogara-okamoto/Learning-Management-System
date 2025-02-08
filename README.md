@@ -2,7 +2,7 @@ This is an app that summarizes the content of videos. Enter the video URL and pr
 
 To run this code, you need to install node modules by run "npm install" and add an .env file in a lms-backend file with the following information:
 
-OPENAI_API_KEY="xxxxxxxxxxxx"
+OPENAI_API_KEY="xxxxxxxxxxxx"<br>
 PORT=5000
 
 Improvement
