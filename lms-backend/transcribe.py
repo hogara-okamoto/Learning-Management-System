@@ -1,9 +1,14 @@
 import sys
 import json
 import whisper_timestamped
+import torch
 
 def transcribe(audio_path):
-    model = whisper_timestamped.load_model("base")  # Use "tiny", "base", "small" for faster results
+    # Load optimized Whisper model (change "tiny", "base", "small" for speed vs. accuracy tradeoff)
+    model_size = "base"  # Change to "base" or "small" if needed
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    model = whisper_timestamped.load_model(model_size, device=device)
     result = model.transcribe(audio_path)
     
     transcript_text = " ".join([seg["text"] for seg in result["segments"]])
