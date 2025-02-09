@@ -7,13 +7,16 @@ def transcribe(audio_path):
     # Load optimized Whisper model (change "tiny", "base", "small" for speed vs. accuracy tradeoff)
     model_size = "base"  # Change to "base" or "small" if needed
     device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    model = whisper_timestamped.load_model(model_size, device=device)
-    result = model.transcribe(audio_path)
     
-    transcript_text = " ".join([seg["text"] for seg in result["segments"]])
+    model = whisper_timestamped.load_model(model_size, device=device)
 
-    # Output the result as JSON
+    # Transcribe the audio
+    result = model.transcribe(audio_path)
+
+    # Extract and join transcript text
+    transcript_text = " ".join(seg["text"] for seg in result["segments"])
+
+    # Print JSON output
     print(json.dumps({"text": transcript_text}))
 
 if __name__ == "__main__":

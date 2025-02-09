@@ -2,35 +2,30 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const { OpenAI } = require("openai");
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const fs = require("fs");
 const { spawnSync } = require("child_process");
-const ffmpeg = require("fluent-ffmpeg");
 
 dotenv.config();
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-// ✅ Progress tracking
-let progressClients = [];
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const clients = [];
 
 app.get("/progress", (req, res) => {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
-    res.flushHeaders();
 
-    progressClients.push(res);
-
+    clients.push(res);
     req.on("close", () => {
-        progressClients = progressClients.filter(client => client !== res);
+        clients.splice(clients.indexOf(res), 1);
     });
 });
 
 function sendProgressUpdate(message) {
-    progressClients.forEach(client => client.write(`data: ${message}\n\n`));
+    clients.forEach(client => client.write(`data: ${message}\n\n`));
 }
 
 // ✅ Function to Split Large Text into Smaller Chunks
@@ -59,45 +54,35 @@ app.post("/generate-summary", async (req, res) => {
         if (!videoUrl) return res.status(400).json({ error: "YouTube URL is required" });
 
         const audioPath = "converted_audio.mp3"; 
-        const trimmedAudioPath = "trimmed_audio.mp3"; 
 
         // Step 1: Download Audio Directly
+        sendProgressUpdate("Downloading...");
         console.log("Downloading audio...");
         const downloadProcess = spawnSync("yt-dlp", [
             "-x",                      // Extract audio only
             "--audio-format", "mp3",   // Convert directly to MP3
-            "--audio-quality", "48K",  // Set audio quality (lower = faster)
+            "--audio-quality", "32K",  // Set audio quality (lower = faster)
             "-o", audioPath,           // Output file name
             videoUrl
         ], { stdio: "inherit" });
 
         if (downloadProcess.status !== 0) {
+            endProgressUpdate("Error: Failed to download audio.");
             console.error("❌ Error downloading audio");
             return res.status(500).json({ error: "Failed to download audio" });
         }
 
+        sendProgressUpdate("Download complete ✅");
         console.log("✅ Audio Downloaded Successfully:", audioPath);
 
-        // Step 2: Trim Silence Using `sox`
-        console.log("Trimming silence...");
-        const soxProcess = spawnSync("sox", [
-            audioPath, trimmedAudioPath,
-            "silence", "1", "0.1", "1%", "1", "0.1", "1%"
-        ]);
-
-        if (soxProcess.status !== 0) {
-            console.error("❌ Error trimming silence");
-            return res.status(500).json({ error: "Failed to process audio" });
-        }
-
-        console.log("✅ Silence Trimmed Successfully:", trimmedAudioPath);
-
-        // Step 3: Transcribe Audio with `whisper-timestamped`
+        // Step 2: Transcribe Audio with `whisper-timestamped`
         try {
+            sendProgressUpdate("Transcribing...");
             console.log("Transcribing audio...");
-            const transcriptionProcess = spawnSync("python3", ["transcribe.py", trimmedAudioPath]);
+            const transcriptionProcess = spawnSync("python3", ["transcribe.py", audioPath]);
 
             if (transcriptionProcess.error) {
+                sendProgressUpdate("Error: Transcription failed.");
                 throw transcriptionProcess.error;
             }
 
@@ -105,13 +90,16 @@ app.post("/generate-summary", async (req, res) => {
             const transcriptData = JSON.parse(transcriptOutput);
             let transcript = transcriptData.text;
 
+            sendProgressUpdate("Transcription complete ✅");
             console.log("📜 Full Transcript Generated:", transcript);
 
-            // Step 4: Summarize the Transcript
+            // Step 3: Summarize the Transcript
+            sendProgressUpdate("Summarizing...");
             const transcriptChunks = splitText(transcript, 2000);
             let summaries = [];
 
             for (let i = 0; i < transcriptChunks.length; i++) {
+                sendProgressUpdate(`Summarizing part ${i + 1}/${transcriptChunks.length}...`);
                 console.log(`📝 Summarizing Part ${i + 1}/${transcriptChunks.length}`);
 
                 const summaryResponse = await openai.chat.completions.create({
@@ -127,15 +115,16 @@ app.post("/generate-summary", async (req, res) => {
 
             const finalSummary = summaries.join("\n\n");
 
+            sendProgressUpdate("Summary complete ✅");
             console.log("📄 Final Summary Generated:", finalSummary);
 
             res.json({ summary: finalSummary });
 
-            // Step 5: Delete Temporary Files (Optional)
+            // Step 4: Delete Temporary Files (Optional)
             fs.unlinkSync(audioPath);
-            fs.unlinkSync(trimmedAudioPath);
 
         } catch (error) {
+            sendProgressUpdate("Error: Internal server error.");
             console.error("❌ Transcription Error:", error);
             res.status(500).json({ error: "Error in audio transcription" });
         }
