@@ -64,9 +64,10 @@ app.post("/generate-summary", async (req, res) => {
         // Step 1: Download Video from User's URL
         console.log("Downloading video...");
         const downloadProcess = spawn("yt-dlp", [
-            "-f", "best[height<=360]",  // 👈 Download max 360p video (faster)
-            "--merge-output-format", "mp4",
-            "-o", videoPath,
+            "-x",                      // Extract audio only
+            "--audio-format", "mp3",   // Convert directly to MP3
+            "--audio-quality", "32K",  // Set audio quality (lower = faster)
+            "-o", "converted_audio.mp3", // Output file name
             videoUrl
         ]);
 
