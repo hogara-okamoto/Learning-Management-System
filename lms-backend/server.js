@@ -59,13 +59,14 @@ app.post("/generate-summary", async (req, res) => {
         if (!videoUrl) return res.status(400).json({ error: "YouTube URL is required" });
 
         const audioPath = "converted_audio.mp3"; 
+        const trimmedAudioPath = "trimmed_audio.mp3"; 
 
         // Step 1: Download Audio Directly
         console.log("Downloading audio...");
         const downloadProcess = spawnSync("yt-dlp", [
             "-x",                      // Extract audio only
             "--audio-format", "mp3",   // Convert directly to MP3
-            "--audio-quality", "32K",  // Set audio quality (lower = faster)
+            "--audio-quality", "48K",  // Set audio quality (lower = faster)
             "-o", audioPath,           // Output file name
             videoUrl
         ], { stdio: "inherit" });
@@ -77,10 +78,24 @@ app.post("/generate-summary", async (req, res) => {
 
         console.log("✅ Audio Downloaded Successfully:", audioPath);
 
-        // Step 2: Transcribe Audio with `whisper-timestamped`
+        // Step 2: Trim Silence Using `sox`
+        console.log("Trimming silence...");
+        const soxProcess = spawnSync("sox", [
+            audioPath, trimmedAudioPath,
+            "silence", "1", "0.1", "1%", "1", "0.1", "1%"
+        ]);
+
+        if (soxProcess.status !== 0) {
+            console.error("❌ Error trimming silence");
+            return res.status(500).json({ error: "Failed to process audio" });
+        }
+
+        console.log("✅ Silence Trimmed Successfully:", trimmedAudioPath);
+
+        // Step 3: Transcribe Audio with `whisper-timestamped`
         try {
             console.log("Transcribing audio...");
-            const transcriptionProcess = spawnSync("python3", ["transcribe.py", audioPath]);
+            const transcriptionProcess = spawnSync("python3", ["transcribe.py", trimmedAudioPath]);
 
             if (transcriptionProcess.error) {
                 throw transcriptionProcess.error;
@@ -92,7 +107,7 @@ app.post("/generate-summary", async (req, res) => {
 
             console.log("📜 Full Transcript Generated:", transcript);
 
-            // Step 3: Summarize the Transcript
+            // Step 4: Summarize the Transcript
             const transcriptChunks = splitText(transcript, 2000);
             let summaries = [];
 
@@ -116,8 +131,9 @@ app.post("/generate-summary", async (req, res) => {
 
             res.json({ summary: finalSummary });
 
-            // Step 4: Delete Temporary Files (Optional)
+            // Step 5: Delete Temporary Files (Optional)
             fs.unlinkSync(audioPath);
+            fs.unlinkSync(trimmedAudioPath);
 
         } catch (error) {
             console.error("❌ Transcription Error:", error);
