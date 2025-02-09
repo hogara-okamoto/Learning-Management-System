@@ -44,8 +44,9 @@ export default function VideoLesson() {
     }
 
     return (
-        <div className="w-full flex flex-col items-center justify-center h-screen p-4">
-            <h1 className="text-2xl font-bold mb-4">YouTube Video Summarizer</h1>
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-6">
+            {/* Header */}
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">🎬 YouTube Video Summarizer</h1>
 
             {/* ✅ Input field */}
             <input
@@ -53,7 +54,7 @@ export default function VideoLesson() {
                 value={inputUrl}
                 onChange={(e) => setInputUrl(e.target.value)}
                 placeholder="Enter YouTube URL..."
-                className="p-2 border rounded w-96 mb-4"
+                className="w-full max-w-lg p-3 border rounded-lg shadow-md mb-4 text-gray-700"
             />
 
             {/* ✅ Progress Display */}
@@ -64,8 +65,8 @@ export default function VideoLesson() {
             {/* ✅ Generate Summary Button */}
             <button 
                 onClick={fetchSummary} 
-                className={`px-4 py-2 rounded-md text-white ${
-                    isProcessing ? "bg-gray-500 cursor-not-allowed" : "bg-blue-500"
+                className={`mt-4 px-6 py-3 text-lg font-semibold text-white rounded-md transition-all duration-300 ${
+                    isProcessing ? "bg-gray-400 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
                 }`}
                 disabled={isProcessing}
             >
@@ -74,25 +75,16 @@ export default function VideoLesson() {
 
             {/* ✅ Video Player */}
             {videoUrl && (
-                <div className="mt-4">
-                    <ReactPlayer url={videoUrl} controls />
+                <div className="mt-6 w-full max-w-2xl">
+                    <ReactPlayer url={videoUrl} controls width="100%" />
                 </div>
             )}
 
             {/* ✅ Summary Section (Fixed CSS with Proper Container) */}
             {summary && (
-                <div className="w-full flex justify-center mt-6">
-                    <div 
-                        className="max-w-[800px] px-5 py-6 bg-white shadow-md rounded-lg border border-gray-200"
-                    >
-                        <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">Summary</h2>
-                    
-                        {/* ✅ Ensure summary loads correctly by using dangerouslySetInnerHTML */}
-                        <p 
-                            className="text-lg text-gray-700 leading-relaxed whitespace-pre-line"
-                            dangerouslySetInnerHTML={{ __html: summary }}
-                        />
-                    </div>
+                <div className="mt-6 w-full max-w-2xl p-6 bg-white shadow-md rounded-lg border border-gray-200">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">📄 Summary</h2>
+                    <p className="text-lg text-gray-700 leading-relaxed whitespace-pre-line">{summary}</p>
                 </div>
             )}
 
