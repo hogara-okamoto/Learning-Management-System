@@ -3,7 +3,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const { OpenAI } = require("openai");
 const fs = require("fs");
-const { spawn } = require("child_process");
+const { spawnSync } = require("child_process");
 const ffmpeg = require("fluent-ffmpeg");
 
 dotenv.config();
@@ -58,94 +58,71 @@ app.post("/generate-summary", async (req, res) => {
         const { url: videoUrl } = req.body;
         if (!videoUrl) return res.status(400).json({ error: "YouTube URL is required" });
 
-        const videoPath = "downloaded_video.mp4";
         const audioPath = "converted_audio.mp3"; 
 
-        // Step 1: Download Video from User's URL
-        console.log("Downloading video...");
-        const downloadProcess = spawn("yt-dlp", [
+        // Step 1: Download Audio Directly
+        console.log("Downloading audio...");
+        const downloadProcess = spawnSync("yt-dlp", [
             "-x",                      // Extract audio only
             "--audio-format", "mp3",   // Convert directly to MP3
             "--audio-quality", "32K",  // Set audio quality (lower = faster)
-            "-o", "converted_audio.mp3", // Output file name
+            "-o", audioPath,           // Output file name
             videoUrl
-        ]);
+        ], { stdio: "inherit" });
 
-        downloadProcess.on("close", async (code) => {
-            if (code === 0) {
-                console.log("✅ Video Downloaded Successfully:", videoPath);
+        if (downloadProcess.status !== 0) {
+            console.error("❌ Error downloading audio");
+            return res.status(500).json({ error: "Failed to download audio" });
+        }
 
-                // ✅ Check that the file exists
-                if (!fs.existsSync(videoPath)) {
-                    console.error("❌ Error: Video file not found!");
-                    return res.status(500).json({ error: "Video file not found!" });
-                }
+        console.log("✅ Audio Downloaded Successfully:", audioPath);
 
-                // Step 2: Convert to MP3
-                console.log("Converting and compressing video to MP3...");
-                ffmpeg(videoPath)
-                    .output(audioPath)
-                    .audioCodec("libmp3lame")
-                    .audioBitrate("32k")
-                    .audioChannels(1)
-                    .toFormat("mp3")
-                    .on("end", async () => {
-                        console.log("✅ Audio Conversion Complete:", audioPath);
+        // Step 2: Transcribe Audio with `whisper-timestamped`
+        try {
+            console.log("Transcribing audio...");
+            const transcriptionProcess = spawnSync("python3", ["transcribe.py", audioPath]);
 
-                        // Step 3: Transcribe Audio with Whisper
-                        try {
-                            console.log("Transcribing audio...");
-                            const transcriptResponse = await openai.audio.transcriptions.create({
-                                file: fs.createReadStream(audioPath),
-                                model: "whisper-1"
-                            });
-
-                            let transcript = transcriptResponse.text;
-                            console.log("📜 Full Transcript Generated:", transcript);
-
-                            // Step 4: Summarize the Transcript
-                            const transcriptChunks = splitText(transcript, 2000);
-                            let summaries = [];
-
-                            for (let i = 0; i < transcriptChunks.length; i++) {
-                                console.log(`📝 Summarizing Part ${i + 1}/${transcriptChunks.length}`);
-
-                                const summaryResponse = await openai.chat.completions.create({
-                                    model: "gpt-4",
-                                    messages: [{ 
-                                        role: "user", 
-                                        content: `Summarize this in JAPANESE ONLY within 100 words: ${transcriptChunks[i]}`
-                                    }]
-                                });
-
-                                summaries.push(summaryResponse.choices[0].message.content);
-                            }
-
-                            const finalSummary = summaries.join("\n\n");
-
-                            console.log("📄 Final Summary Generated:", finalSummary);
-
-                            res.json({ summary: finalSummary });
-
-                            // Step 5: Delete Temporary Files (Optional)
-                            fs.unlinkSync(videoPath);
-                            fs.unlinkSync(audioPath);
-
-                        } catch (error) {
-                            console.error("❌ Transcription Error:", error);
-                            res.status(500).json({ error: "Error in audio transcription" });
-                        }
-                    })
-                    .on("error", (err) => {
-                        console.error("❌ Audio Compression Error:", err);
-                        res.status(500).json({ error: "Audio conversion failed." });
-                    })
-                    .run();
-            } else {
-                console.error(`❌ Download failed with exit code ${code}`);
-                res.status(500).json({ error: "Failed to download video" });
+            if (transcriptionProcess.error) {
+                throw transcriptionProcess.error;
             }
-        });
+
+            const transcriptOutput = transcriptionProcess.stdout.toString();
+            const transcriptData = JSON.parse(transcriptOutput);
+            let transcript = transcriptData.text;
+
+            console.log("📜 Full Transcript Generated:", transcript);
+
+            // Step 3: Summarize the Transcript
+            const transcriptChunks = splitText(transcript, 2000);
+            let summaries = [];
+
+            for (let i = 0; i < transcriptChunks.length; i++) {
+                console.log(`📝 Summarizing Part ${i + 1}/${transcriptChunks.length}`);
+
+                const summaryResponse = await openai.chat.completions.create({
+                    model: "gpt-4",
+                    messages: [{ 
+                        role: "user", 
+                        content: `Summarize this in JAPANESE ONLY within 100 words: ${transcriptChunks[i]}` 
+                    }]
+                });
+
+                summaries.push(summaryResponse.choices[0].message.content);
+            }
+
+            const finalSummary = summaries.join("\n\n");
+
+            console.log("📄 Final Summary Generated:", finalSummary);
+
+            res.json({ summary: finalSummary });
+
+            // Step 4: Delete Temporary Files (Optional)
+            fs.unlinkSync(audioPath);
+
+        } catch (error) {
+            console.error("❌ Transcription Error:", error);
+            res.status(500).json({ error: "Error in audio transcription" });
+        }
 
     } catch (error) {
         console.error("❌ Error:", error);
