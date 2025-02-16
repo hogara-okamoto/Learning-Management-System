@@ -1,37 +1,37 @@
 This is an app that summarizes the content of videos. Enter the video URL and press Generate Summary.
 
-- backend
-server.js
+- backend<br>
+server.js<br>
 transcribe.py
 
-- fronend
+- fronend<br>
 page.tsx
 
 To run this code, you need to install node modules and add an .env file in a lms-backend file.
 
-- setup for backend
-mkdir lms-backend
-cd lms-backend
-npm init -y
+- setup for backend<br>
+mkdir lms-backend<br>
+cd lms-backend<br>
+npm init -y<br>
 npm install express openai mongoose cors
 
-- setup for frontend
-npx create-next-app@latest lms-frontend
-cd lms-frontend
-npm install
-npm install -D tailwindcss postcss autoprefixer
-npx tailwindcss init -p
+- setup for frontend<br>
+npx create-next-app@latest lms-frontend<br>
+cd lms-frontend<br>
+npm install<br>
+npm install -D tailwindcss postcss autoprefixer<br>
+npx tailwindcss init -p<br>
 
-- .env
+- .env<br>
 OPENAI_API_KEY="xxxxxxxxxxxx"<br>
 PORT=5000
 
 To run.
 
-- backend
+- backend<br>
 node server.js
 
-- frontend
+- frontend<br>
 npm run dev
 
 Improvement
