@@ -33,7 +33,7 @@ To run.
 node server.js
 
 - frontend<br>
-npm run dev
+npm run dev<br>
 localhost:3000
 
 Improvement
