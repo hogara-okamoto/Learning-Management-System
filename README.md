@@ -31,7 +31,7 @@ To run.
 - backend
 node server.js
 
--frontend
+- frontend
 npm run dev
 
 Improvement
