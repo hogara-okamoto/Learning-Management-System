@@ -2,7 +2,8 @@ This is an app that summarizes the content of videos. Enter the video URL and pr
 
 - backend<br>
 server.js<br>
-transcribe.py
+transcribe.py<br>
+.env
 
 - fronend<br>
 page.tsx
@@ -33,5 +34,6 @@ node server.js
 
 - frontend<br>
 npm run dev
+localhost:3000
 
 Improvement
