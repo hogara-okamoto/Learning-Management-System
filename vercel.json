@@ -1,0 +1,11 @@
+{
+    "version": 2,
+    "builds": [
+      { "src": "lms-backend/api/summarize.js", "use": "@vercel/node" },
+      { "src": "lms-frontend", "use": "@vercel/next" }
+    ],
+    "routes": [
+      { "src": "/api/(.*)", "dest": "lms-backend/api/$1" },
+      { "src": "/(.*)", "dest": "lms-frontend/$1" }
+    ]
+  }
