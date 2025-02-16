@@ -8,40 +8,28 @@ export default function VideoLesson() {
     const [inputUrl, setInputUrl] = useState(""); 
     const [summary, setSummary] = useState("");
     const [transcript, setTranscript] = useState("");
-    const [progress, setProgress] = useState("Waiting for input...");
     const [isProcessing, setIsProcessing] = useState(false);
-
-    useEffect(() => {
-        const eventSource = new EventSource("http://localhost:5000/progress");
-        
-        eventSource.onmessage = (event) => {
-            setProgress(event.data);  // ✅ Update progress text in UI
-        };
-
-        return () => eventSource.close();
-    }, []);
 
     async function fetchSummary() {
         setIsProcessing(true);
-        setProgress("Starting process...");
-
+    
         try {
-            const res = await fetch("http://localhost:5000/generate-summary", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url: inputUrl })
-            });
-
-            const data = await res.json();
-            setVideoUrl(inputUrl); 
-            setTranscript(data.transcript);
-            setSummary(data.summary);
+          const res = await fetch("/api/summarize", { // Call the serverless function
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: inputUrl }),
+          });
+    
+          const data = await res.json();
+          setVideoUrl(inputUrl);
+          setTranscript(data.transcript);
+          setSummary(data.summary);
         } catch (error) {
-            console.error("Error generating summary:", error);
+          console.error("Error generating summary:", error);
         } finally {
-            setIsProcessing(false);
+          setIsProcessing(false);
         }
-    }
+      }
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-6">
