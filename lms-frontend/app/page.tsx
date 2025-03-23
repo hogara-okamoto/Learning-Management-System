@@ -9,12 +9,14 @@ export default function VideoLesson() {
     const [summary, setSummary] = useState("");
     const [transcript, setTranscript] = useState("");
     const [isProcessing, setIsProcessing] = useState(false);
+    const [progress, setProgress] = useState(""); 
 
     async function fetchSummary() {
         setIsProcessing(true);
     
         try {
-          const res = await fetch("/api/summarize", { // Call the serverless function
+            const res = await fetch("http://localhost:5000/generate-summary", {
+            //const res = await fetch("/api/summarize", { // Call the serverless function
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ url: inputUrl }),
