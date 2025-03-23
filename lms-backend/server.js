@@ -67,7 +67,7 @@ app.post("/generate-summary", async (req, res) => {
         ], { stdio: "inherit" });
 
         if (downloadProcess.status !== 0) {
-            endProgressUpdate("Error: Failed to download audio.");
+            sendProgressUpdate("Error: Failed to download audio.");
             console.error("❌ Error downloading audio");
             return res.status(500).json({ error: "Failed to download audio" });
         }
