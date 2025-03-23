@@ -37,3 +37,4 @@ npm run dev<br>
 localhost:3000
 
 Improvement
+I want to run this app in Vercel by putting the transcribe.py in an outside server.
